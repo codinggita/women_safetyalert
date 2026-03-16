@@ -153,7 +153,16 @@ export default function SOSButton({ onAlertSent }) {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in"
+          onClick={(e) => { 
+            if (e.target === e.currentTarget) {
+              setShowModal(false); 
+              setAlertSent(false); 
+              setError(null); 
+            }
+          }}
+        >
           <div className="bg-white dark:bg-dark-card rounded-2xl p-8 max-w-sm w-full text-center animate-scale-in">
             {error ? (
               <>
@@ -208,6 +217,12 @@ export default function SOSButton({ onAlertSent }) {
                     <span>Email sent to pritesh.v.bachhav.cg@gmail.com</span>
                   </div>
                 </div>
+                <button
+                  onClick={() => { setShowModal(false); setAlertSent(false); }}
+                  className="mt-6 px-6 py-2 rounded-xl bg-primary text-white font-medium"
+                >
+                  Close
+                </button>
               </>
             )}
           </div>

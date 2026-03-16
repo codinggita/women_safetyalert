@@ -2,6 +2,13 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const passport = require('passport');
+
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRE || '7d',
+  });
+};
 
 /**
  * @route   POST /api/auth/register
@@ -22,9 +29,7 @@ router.post('/register', async (req, res) => {
     const user = await User.create({ name, email, password });
 
     // Generate JWT token
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRE || '7d',
-    });
+    const token = generateToken(user._id);
 
     res.status(201).json({
       success: true,
@@ -55,6 +60,11 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
+    // Check if user is OAuth user (no password)
+    if (!user.password) {
+      return res.status(401).json({ message: 'Please login with Google' });
+    }
+
     // Check if password matches
     const isMatch = await user.matchPassword(password);
     if (!isMatch) {
@@ -62,9 +72,7 @@ router.post('/login', async (req, res) => {
     }
 
     // Generate JWT token
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRE || '7d',
-    });
+    const token = generateToken(user._id);
 
     res.json({
       success: true,
@@ -79,6 +87,38 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
+/**
+ * @route   GET /api/auth/google
+ * @desc    Google OAuth - Redirect to Google
+ * @access  Public
+ */
+router.get('/google', (req, res) => {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    return res.status(503).json({ message: 'Google OAuth is not configured' });
+  }
+  passport.authenticate('google', { scope: ['profile', 'email'] })(req, res);
+});
+
+/**
+ * @route   GET /api/auth/google/callback
+ * @desc    Google OAuth callback
+ * @access  Public
+ */
+router.get(
+  '/google/callback',
+  (req, res, next) => {
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+      return res.status(503).json({ message: 'Google OAuth is not configured' });
+    }
+    passport.authenticate('google', { failureRedirect: '/login?error=oauth_failed' })(req, res, next);
+  },
+  (req, res) => {
+    const token = generateToken(req.user._id);
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
+  }
+);
 
 /**
  * @route   GET /api/auth/me

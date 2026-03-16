@@ -7,16 +7,27 @@ const initTransporter = () => {
     console.log('⚠️ Email not configured - EMAIL_USER or EMAIL_PASS missing');
     return null;
   }
-  if (process.env.EMAIL_PASS === 'your-app-password') {
-    console.log('⚠️ Email not configured - Using placeholder password');
-    return null;
+  
+  const cleanPassword = process.env.EMAIL_PASS.replace(/\s/g, '');
+  
+  if (process.env.REFRESH_TOKEN) {
+    return nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        type: 'OAuth2',
+        user: process.env.EMAIL_USER,
+        clientId: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        refreshToken: process.env.REFRESH_TOKEN,
+      },
+    });
   }
   
   return nodemailer.createTransport({
     service: 'gmail',
     auth: {
       user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
+      pass: cleanPassword,
     },
   });
 };

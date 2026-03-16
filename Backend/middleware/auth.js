@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
 /**
  * Middleware to protect routes - verifies JWT token
@@ -19,8 +20,13 @@ const protect = async (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    // Add user id to request
-    req.user = { id: decoded.id };
+    // Fetch full user
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
+    }
+    
+    req.user = user;
     next();
   } catch (error) {
     return res.status(401).json({ message: 'Not authorized, token invalid' });

@@ -25,12 +25,21 @@ const userSchema = new mongoose.Schema(
       match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please provide a valid email'],
     },
 
-    // User's password (hashed)
+    // User's password (optional for OAuth users)
     password: {
       type: String,
-      required: [true, 'Please provide a password'],
+      required: function() {
+        return !this.googleId;
+      },
       minlength: [6, 'Password must be at least 6 characters'],
-      select: false, // Don't return password by default in queries
+      select: false,
+    },
+
+    // Google OAuth ID
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
     },
   },
   {
@@ -43,7 +52,7 @@ const userSchema = new mongoose.Schema(
  * Uses bcryptjs with 10 rounds of salt
  */
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) {
+  if (!this.isModified('password') || !this.password) {
     next();
   }
   const salt = await bcrypt.genSalt(10);
