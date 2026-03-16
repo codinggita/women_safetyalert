@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { AlertTriangle, Check, Phone, MapPin, MessageSquare, Loader2 } from 'lucide-react';
+import { AlertTriangle, Check, Phone, MapPin, MessageSquare, Loader2, XCircle } from 'lucide-react';
 import api from '../services/api';
 import { useLocation } from '../context/LocationContext';
 import { useAuth } from '../context/AuthContext';
@@ -13,6 +13,7 @@ export default function SOSButton({ onAlertSent }) {
   const [alertSent, setAlertSent] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState(null);
 
   const startCountdown = () => {
     setCountdown(true);
@@ -22,10 +23,12 @@ export default function SOSButton({ onAlertSent }) {
   const cancelAlert = () => {
     setCountdown(false);
     setCount(3);
+    setError(null);
   };
 
   const sendAlert = async () => {
     setSending(true);
+    setError(null);
     try {
       if (location) {
         await api.sos.trigger({
@@ -38,15 +41,13 @@ export default function SOSButton({ onAlertSent }) {
       setAlertSent(true);
       setShowModal(true);
       if (onAlertSent) onAlertSent();
-    } catch (error) {
-      console.error('Failed to send SOS:', error);
+    } catch (err) {
+      console.error('Failed to send SOS:', err);
+      setError(err.message || 'Failed to send alert. Please try again.');
+      setAlertSent(false);
+      setShowModal(true);
     } finally {
       setSending(false);
-      setTimeout(() => {
-        setShowModal(false);
-        setAlertSent(false);
-        setCountdown(false);
-      }, 3000);
     }
   };
 
@@ -154,36 +155,61 @@ export default function SOSButton({ onAlertSent }) {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in">
           <div className="bg-white dark:bg-dark-card rounded-2xl p-8 max-w-sm w-full text-center animate-scale-in">
-            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-              <Check className="w-10 h-10 text-green-500" />
-            </div>
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              Alert Sent!
-            </h3>
-            <p className="text-gray-600 dark:text-gray-300 mb-4">
-              Your emergency contacts and local authorities have been notified.
-            </p>
-            <div className="space-y-2">
-              <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-                <Phone className="w-4 h-4" />
-                <span>Emergency contacts notified</span>
-              </div>
-              {location ? (
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-                  <MapPin className="w-4 h-4" />
-                  <span>📍 {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}</span>
+            {error ? (
+              <>
+                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                  <XCircle className="w-10 h-10 text-red-500" />
                 </div>
-              ) : (
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-                  <MapPin className="w-4 h-4" />
-                  <span>Location unavailable</span>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                  Alert Failed
+                </h3>
+                <p className="text-gray-600 dark:text-gray-300 mb-4">
+                  {error}
+                </p>
+                <p className="text-sm text-gray-500 mb-4">
+                  Please check your email configuration or try again.
+                </p>
+                <button
+                  onClick={() => { setShowModal(false); setError(null); }}
+                  className="px-6 py-2 rounded-xl bg-gray-100 dark:bg-dark-border text-gray-700 dark:text-gray-200 font-medium"
+                >
+                  Close
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                  <Check className="w-10 h-10 text-green-500" />
                 </div>
-              )}
-              <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-                <MessageSquare className="w-4 h-4" />
-                <span>Email sent to pritesh.v.bachhav.cg@gmail.com</span>
-              </div>
-            </div>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                  Alert Sent!
+                </h3>
+                <p className="text-gray-600 dark:text-gray-300 mb-4">
+                  Your emergency contacts and local authorities have been notified.
+                </p>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                    <Phone className="w-4 h-4" />
+                    <span>Emergency contacts notified</span>
+                  </div>
+                  {location ? (
+                    <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                      <MapPin className="w-4 h-4" />
+                      <span>📍 {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                      <MapPin className="w-4 h-4" />
+                      <span>Location unavailable</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Email sent to pritesh.v.bachhav.cg@gmail.com</span>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
