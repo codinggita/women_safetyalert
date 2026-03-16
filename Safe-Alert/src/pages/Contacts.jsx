@@ -1,21 +1,17 @@
-import { useState } from 'react';
-import { Plus, Search, Phone, User } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Search, Phone, User, Loader2 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import Navbar from '../components/Navbar';
 import BottomNav from '../components/BottomNav';
 import ContactCard from '../components/ContactCard';
 import Modal from '../components/Modal';
-
-const initialContacts = [
-  { id: 1, name: 'Priya Sharma', phone: '+91 98765 43210', relationship: 'Mother', isPrimary: true },
-  { id: 2, name: 'Anita Desai', phone: '+91 98765 43211', relationship: 'Best Friend', isPrimary: false },
-  { id: 3, name: 'Raj Patel', phone: '+91 98765 43212', relationship: 'Brother', isPrimary: false },
-  { id: 4, name: 'Meera Singh', phone: '+91 98765 43213', relationship: 'Colleague', isPrimary: false },
-];
+import api from '../services/api';
 
 export default function Contacts() {
   const { darkMode } = useTheme();
-  const [contacts, setContacts] = useState(initialContacts);
+  const [contacts, setContacts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
@@ -24,6 +20,22 @@ export default function Contacts() {
     phone: '',
     relationship: '',
   });
+
+  useEffect(() => {
+    fetchContacts();
+  }, []);
+
+  const fetchContacts = async () => {
+    try {
+      setLoading(true);
+      const data = await api.contacts.getAll();
+      setContacts(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredContacts = contacts.filter(contact =>
     contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -46,34 +58,41 @@ export default function Contacts() {
     setIsModalOpen(true);
   };
 
-  const handleDeleteContact = (id) => {
-    setContacts(contacts.filter(c => c.id !== id));
-  };
-
-  const handleSetPrimary = (id) => {
-    setContacts(contacts.map(c => ({
-      ...c,
-      isPrimary: c.id === id
-    })));
-  };
-
-  const handleSaveContact = (e) => {
-    e.preventDefault();
-    if (editingContact) {
-      setContacts(contacts.map(c =>
-        c.id === editingContact.id
-          ? { ...c, ...formData }
-          : c
-      ));
-    } else {
-      const newContact = {
-        id: Date.now(),
-        ...formData,
-        isPrimary: contacts.length === 0,
-      };
-      setContacts([...contacts, newContact]);
+  const handleDeleteContact = async (id) => {
+    try {
+      await api.contacts.delete(id);
+      setContacts(contacts.filter(c => c._id !== id));
+    } catch (err) {
+      setError(err.message);
     }
-    setIsModalOpen(false);
+  };
+
+  const handleSetPrimary = async (id) => {
+    try {
+      await api.contacts.setPrimary(id);
+      setContacts(contacts.map(c => ({
+        ...c,
+        isPrimary: c._id === id
+      })));
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleSaveContact = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingContact) {
+        const updated = await api.contacts.update(editingContact._id, formData);
+        setContacts(contacts.map(c => c._id === editingContact._id ? updated : c));
+      } else {
+        const newContact = await api.contacts.create(formData);
+        setContacts([newContact, ...contacts]);
+      }
+      setIsModalOpen(false);
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   return (
@@ -111,7 +130,18 @@ export default function Contacts() {
             />
           </div>
 
-          {filteredContacts.length === 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            </div>
+          ) : error ? (
+            <div className="text-center py-12">
+              <p className="text-red-500">{error}</p>
+              <button onClick={fetchContacts} className="mt-4 text-primary hover:underline">
+                Try again
+              </button>
+            </div>
+          ) : filteredContacts.length === 0 ? (
             <div className="text-center py-12">
               <div className="w-16 h-16 mx-auto rounded-full bg-gray-100 dark:bg-dark-card flex items-center justify-center mb-4">
                 <User className="w-8 h-8 text-gray-400" />
@@ -134,7 +164,7 @@ export default function Contacts() {
             <div className="space-y-4">
               {filteredContacts.map((contact) => (
                 <ContactCard
-                  key={contact.id}
+                  key={contact._id}
                   contact={contact}
                   onEdit={handleEditContact}
                   onDelete={handleDeleteContact}

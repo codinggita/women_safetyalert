@@ -32,7 +32,7 @@ export default function ContactCard({ contact, onEdit, onDelete, onSetPrimary })
       <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-dark-border">
         {!contact.isPrimary && (
           <button
-            onClick={() => onSetPrimary(contact.id)}
+            onClick={() => onSetPrimary(contact._id)}
             className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium text-secondary hover:bg-secondary/10 rounded-lg transition-colors"
           >
             <Star className="w-4 h-4" />
@@ -46,7 +46,7 @@ export default function ContactCard({ contact, onEdit, onDelete, onSetPrimary })
           <Edit2 className="w-4 h-4" />
         </button>
         <button
-          onClick={() => onDelete(contact.id)}
+          onClick={() => onDelete(contact._id)}
           className="flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
         >
           <Trash2 className="w-4 h-4" />
