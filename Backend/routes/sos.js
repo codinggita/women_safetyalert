@@ -29,7 +29,8 @@ router.post('/', async (req, res) => {
     // Send SOS email
     const user = req.user;
     const location = latitude && longitude ? { latitude, longitude } : null;
-    await sendSOSEmail(user, location);
+    const emailResult = await sendSOSEmail(user, location);
+    console.log('📧 SOS Email Result:', emailResult);
 
     res.status(201).json({ success: true, sosAlert });
   } catch (error) {

@@ -1,19 +1,45 @@
 const nodemailer = require('nodemailer');
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+let transporter = null;
+
+const initTransporter = () => {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.log('⚠️ Email not configured - EMAIL_USER or EMAIL_PASS missing');
+    return null;
+  }
+  if (process.env.EMAIL_PASS === 'your-app-password') {
+    console.log('⚠️ Email not configured - Using placeholder password');
+    return null;
+  }
+  
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+};
 
 const sendSOSEmail = async (user, location) => {
+  console.log('📧 Attempting to send SOS email...');
+  console.log('📧 From:', process.env.EMAIL_USER);
+  console.log('📧 To:', process.env.SOS_EMAILS);
+  
+  if (!transporter) {
+    transporter = initTransporter();
+  }
+  
+  if (!transporter) {
+    console.log('❌ Email service not available - transporter not initialized');
+    return { success: false, reason: 'Email not configured on server' };
+  }
+
   const sosEmails = process.env.SOS_EMAILS?.split(',') || [];
   
   if (sosEmails.length === 0) {
-    console.log('No SOS email recipients configured');
-    return;
+    console.log('❌ No SOS email recipients configured');
+    return { success: false, reason: 'No recipients configured' };
   }
 
   const locationText = location 
@@ -45,12 +71,12 @@ const sendSOSEmail = async (user, location) => {
   };
 
   try {
-    await transporter.sendMail(mailOptions);
-    console.log('SOS email sent successfully');
-    return true;
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ SOS email sent successfully! Message ID:', info.messageId);
+    return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('Error sending SOS email:', error.message);
-    return false;
+    console.error('❌ Error sending SOS email:', error.message);
+    return { success: false, reason: error.message };
   }
 };
 
