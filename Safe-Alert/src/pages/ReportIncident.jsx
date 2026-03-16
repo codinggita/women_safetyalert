@@ -6,12 +6,14 @@ import {
   AlertTriangle,
   CheckCircle,
   Upload,
-  ChevronDown
+  ChevronDown,
+  Loader2
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import Navbar from '../components/Navbar';
 import BottomNav from '../components/BottomNav';
 import MapComponent from '../components/MapComponent';
+import api from '../services/api';
 
 const incidentTypes = [
   { value: 'harassment', label: 'Harassment', icon: AlertTriangle },
@@ -24,6 +26,8 @@ const incidentTypes = [
 
 export default function ReportIncident() {
   const { darkMode } = useTheme();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     type: '',
     description: '',
@@ -35,21 +39,38 @@ export default function ReportIncident() {
   });
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsSubmitted(true);
-    setTimeout(() => {
-      setIsSubmitted(false);
-      setFormData({
-        type: '',
-        description: '',
-        location: '',
-        date: new Date().toISOString().split('T')[0],
-        time: new Date().toTimeString().slice(0, 5),
-        anonymous: false,
-        shareLocation: true,
+    setLoading(true);
+    setError('');
+    try {
+      await api.incidents.create({
+        incidentType: formData.type,
+        description: formData.description,
+        location: {
+          address: formData.location,
+        },
+        isAnonymous: formData.anonymous,
+        severity: 'medium',
       });
-    }, 3000);
+      setIsSubmitted(true);
+      setTimeout(() => {
+        setIsSubmitted(false);
+        setFormData({
+          type: '',
+          description: '',
+          location: '',
+          date: new Date().toISOString().split('T')[0],
+          time: new Date().toTimeString().slice(0, 5),
+          anonymous: false,
+          shareLocation: true,
+        });
+      }, 3000);
+    } catch (err) {
+      setError(err.message || 'Failed to submit report');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -81,6 +102,11 @@ export default function ReportIncident() {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
+              {error && (
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-xl text-red-600 dark:text-red-400 text-sm">
+                  {error}
+                </div>
+              )}
               <div className="bg-white dark:bg-dark-card rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-dark-border">
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
                   Incident Details
@@ -243,10 +269,15 @@ export default function ReportIncident() {
 
               <button
                 type="submit"
-                className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl gradient-primary text-white font-semibold hover:shadow-lg hover:shadow-primary/30 transition-all"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl gradient-primary text-white font-semibold hover:shadow-lg hover:shadow-primary/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <AlertTriangle className="w-5 h-5" />
-                Submit Report
+                {loading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <AlertTriangle className="w-5 h-5" />
+                )}
+                {loading ? 'Submitting...' : 'Submit Report'}
               </button>
             </form>
           )}

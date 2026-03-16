@@ -1,16 +1,11 @@
-import { useState } from 'react';
-import { Plus, Home, Building, GraduationCap, MapPin, Edit2, Trash2, Shield } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Home, Building, GraduationCap, MapPin, Edit2, Trash2, Shield, Loader2 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import Navbar from '../components/Navbar';
 import BottomNav from '../components/BottomNav';
 import MapComponent from '../components/MapComponent';
 import Modal from '../components/Modal';
-
-const initialZones = [
-  { id: 1, name: 'Home', address: '123 Main Street, Apt 4B', type: 'home', x: 30, y: 40 },
-  { id: 2, name: 'Office', address: '456 Business Park, Floor 12', type: 'office', x: 60, y: 35 },
-  { id: 3, name: 'College', address: 'XYZ University, Campus A', type: 'college', x: 45, y: 70 },
-];
+import api from '../services/api';
 
 const zoneIcons = {
   home: Home,
@@ -26,7 +21,9 @@ const zoneColors = {
 
 export default function SafeZones() {
   const { darkMode } = useTheme();
-  const [zones, setZones] = useState(initialZones);
+  const [zones, setZones] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingZone, setEditingZone] = useState(null);
   const [selectedZone, setSelectedZone] = useState(null);
@@ -35,6 +32,26 @@ export default function SafeZones() {
     address: '',
     type: 'home',
   });
+
+  useEffect(() => {
+    fetchZones();
+  }, []);
+
+  const fetchZones = async () => {
+    try {
+      setLoading(true);
+      const data = await api.safeZones.getAll();
+      setZones(data.map((zone, index) => ({
+        ...zone,
+        x: 20 + (index * 25),
+        y: 20 + (index * 20),
+      })));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAddZone = () => {
     setEditingZone(null);
@@ -52,28 +69,41 @@ export default function SafeZones() {
     setIsModalOpen(true);
   };
 
-  const handleDeleteZone = (id) => {
-    setZones(zones.filter(z => z.id !== id));
+  const handleDeleteZone = async (id) => {
+    try {
+      await api.safeZones.delete(id);
+      setZones(zones.filter(z => z._id !== id));
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
-  const handleSaveZone = (e) => {
+  const handleSaveZone = async (e) => {
     e.preventDefault();
-    if (editingZone) {
-      setZones(zones.map(z =>
-        z.id === editingZone.id
-          ? { ...z, ...formData }
-          : z
-      ));
-    } else {
-      const newZone = {
-        id: Date.now(),
-        ...formData,
-        x: Math.random() * 80 + 10,
-        y: Math.random() * 80 + 10,
-      };
-      setZones([...zones, newZone]);
+    try {
+      if (editingZone) {
+        const updated = await api.safeZones.update(editingZone._id, {
+          name: formData.name,
+          address: formData.address,
+          type: formData.type,
+        });
+        setZones(zones.map(z => z._id === editingZone._id ? { ...updated, x: z.x, y: z.y } : z));
+      } else {
+        const newZone = await api.safeZones.create({
+          name: formData.name,
+          address: formData.address,
+          type: formData.type,
+          location: {
+            latitude: 28.6139 + (Math.random() - 0.5) * 0.1,
+            longitude: 77.209 + (Math.random() - 0.5) * 0.1,
+          },
+        });
+        setZones([...zones, { ...newZone, x: Math.random() * 80 + 10, y: Math.random() * 80 + 10 }]);
+      }
+      setIsModalOpen(false);
+    } catch (err) {
+      setError(err.message);
     }
-    setIsModalOpen(false);
   };
 
   return (
@@ -109,19 +139,25 @@ export default function SafeZones() {
                   </h3>
                 </div>
                 <div className="h-96">
-                  <MapComponent
-                    showCurrentLocation={false}
-                    markers={zones.map(zone => ({
-                      id: zone.id,
-                      x: zone.x,
-                      y: zone.y,
-                      type: 'safe'
-                    }))}
-                    onMarkerClick={(marker) => {
-                      const zone = zones.find(z => z.id === marker.id);
-                      if (zone) setSelectedZone(zone);
-                    }}
-                  />
+                  {loading ? (
+                    <div className="flex items-center justify-center h-full">
+                      <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                    </div>
+                  ) : (
+                    <MapComponent
+                      showCurrentLocation={false}
+                      markers={zones.map(zone => ({
+                        id: zone._id,
+                        x: zone.x,
+                        y: zone.y,
+                        type: 'safe'
+                      }))}
+                      onMarkerClick={(marker) => {
+                        const zone = zones.find(z => z._id === marker.id);
+                        if (zone) setSelectedZone(zone);
+                      }}
+                    />
+                  )}
                 </div>
               </div>
             </div>
@@ -131,7 +167,11 @@ export default function SafeZones() {
                 Your Safe Zones
               </h3>
               
-              {zones.length === 0 ? (
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                </div>
+              ) : zones.length === 0 ? (
                 <div className="bg-white dark:bg-dark-card rounded-2xl p-6 text-center">
                   <div className="w-14 h-14 mx-auto rounded-full bg-gray-100 dark:bg-dark-card flex items-center justify-center mb-3">
                     <Shield className="w-7 h-7 text-gray-400" />
@@ -154,9 +194,9 @@ export default function SafeZones() {
                   const Icon = zoneIcons[zone.type];
                   return (
                     <div
-                      key={zone.id}
+                      key={zone._id}
                       className={`bg-white dark:bg-dark-card rounded-xl p-4 shadow-sm border border-gray-100 dark:border-dark-border cursor-pointer transition-all hover:shadow-md ${
-                        selectedZone?.id === zone.id ? 'ring-2 ring-primary' : ''
+                        selectedZone?._id === zone._id ? 'ring-2 ring-primary' : ''
                       }`}
                       onClick={() => setSelectedZone(zone)}
                     >
@@ -187,7 +227,7 @@ export default function SafeZones() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDeleteZone(zone.id);
+                            handleDeleteZone(zone._id);
                           }}
                           className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                         >

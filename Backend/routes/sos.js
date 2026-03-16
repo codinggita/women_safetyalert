@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const SOSAlert = require('../models/SOSAlert');
 const EmergencyContact = require('../models/EmergencyContact');
+const { sendSOSEmail } = require('../services/emailService');
 
 /**
  * @route   POST /api/sos
@@ -24,6 +25,11 @@ router.post('/', async (req, res) => {
       message,
       status: 'sent',
     });
+
+    // Send SOS email
+    const user = req.user;
+    const location = latitude && longitude ? { latitude, longitude } : null;
+    await sendSOSEmail(user, location);
 
     res.status(201).json({ success: true, sosAlert });
   } catch (error) {

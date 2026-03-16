@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Menu, 
   X, 
@@ -7,14 +7,27 @@ import {
   User, 
   Moon, 
   Sun,
-  Shield
+  Shield,
+  LogOut
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const { darkMode, toggleDarkMode } = useTheme();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout, loading } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+
+  if (loading) {
+    return null;
+  }
 
   const navLinks = [
     { name: 'Home', path: '/' },
@@ -67,17 +80,35 @@ export default function Navbar() {
                 <Moon className="w-5 h-5 text-gray-600" />
               )}
             </button>
-            <button className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-card transition-colors relative">
-              <Bell className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full"></span>
-            </button>
-            <Link
-              to="/login"
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 dark:bg-dark-card hover:bg-gray-200 dark:hover:bg-dark-border transition-colors"
-            >
-              <User className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Login</span>
-            </Link>
+            {user && (
+              <button className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-card transition-colors relative">
+                <Bell className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full"></span>
+              </button>
+            )}
+            {user ? (
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10">
+                  <User className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium text-primary">{user.name}</span>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-card transition-colors"
+                  title="Logout"
+                >
+                  <LogOut className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                </button>
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 dark:bg-dark-card hover:bg-gray-200 dark:hover:bg-dark-border transition-colors"
+              >
+                <User className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Login</span>
+              </Link>
+            )}
           </div>
 
           <button
@@ -124,13 +155,24 @@ export default function Navbar() {
                   {darkMode ? 'Light Mode' : 'Dark Mode'}
                 </span>
               </button>
-              <Link
-                to="/login"
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg gradient-primary text-white"
-              >
-                <User className="w-4 h-4" />
-                <span className="text-sm font-medium">Login</span>
-              </Link>
+              {user ? (
+                <button
+                  onClick={() => { setIsOpen(false); handleLogout(); }}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span className="text-sm font-medium">Logout</span>
+                </button>
+              ) : (
+                <Link
+                  to="/login"
+                  onClick={() => setIsOpen(false)}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg gradient-primary text-white"
+                >
+                  <User className="w-4 h-4" />
+                  <span className="text-sm font-medium">Login</span>
+                </Link>
+              )}
             </div>
           </div>
         </div>

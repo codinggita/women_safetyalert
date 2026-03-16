@@ -1,12 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
-import { AlertTriangle, Check, Phone, MapPin, MessageSquare } from 'lucide-react';
+import { AlertTriangle, Check, Phone, MapPin, MessageSquare, Loader2 } from 'lucide-react';
+import api from '../services/api';
+import { useLocation } from '../context/LocationContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function SOSButton({ onAlertSent }) {
+  const { location } = useLocation();
+  const { user } = useAuth();
   const [countdown, setCountdown] = useState(false);
   const [count, setCount] = useState(3);
   const [isShaking, setIsShaking] = useState(false);
   const [alertSent, setAlertSent] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [sending, setSending] = useState(false);
 
   const startCountdown = () => {
     setCountdown(true);
@@ -18,15 +24,30 @@ export default function SOSButton({ onAlertSent }) {
     setCount(3);
   };
 
-  const sendAlert = () => {
-    setAlertSent(true);
-    setShowModal(true);
-    if (onAlertSent) onAlertSent();
-    setTimeout(() => {
-      setShowModal(false);
-      setAlertSent(false);
-      setCountdown(false);
-    }, 3000);
+  const sendAlert = async () => {
+    setSending(true);
+    try {
+      if (location) {
+        await api.sos.trigger({
+          latitude: location.latitude,
+          longitude: location.longitude,
+        });
+      } else {
+        await api.sos.trigger(null);
+      }
+      setAlertSent(true);
+      setShowModal(true);
+      if (onAlertSent) onAlertSent();
+    } catch (error) {
+      console.error('Failed to send SOS:', error);
+    } finally {
+      setSending(false);
+      setTimeout(() => {
+        setShowModal(false);
+        setAlertSent(false);
+        setCountdown(false);
+      }, 3000);
+    }
   };
 
   useEffect(() => {
@@ -105,10 +126,17 @@ export default function SOSButton({ onAlertSent }) {
             </svg>
             <button
               onClick={cancelAlert}
+              disabled={sending}
               className="absolute inset-0 flex flex-col items-center justify-center bg-white dark:bg-dark-card rounded-full shadow-2xl"
             >
-              <span className="text-6xl font-bold text-primary">{count}</span>
-              <span className="text-sm text-gray-500 mt-2">Tap to cancel</span>
+              {sending ? (
+                <Loader2 className="w-12 h-12 text-primary animate-spin" />
+              ) : (
+                <>
+                  <span className="text-6xl font-bold text-primary">{count}</span>
+                  <span className="text-sm text-gray-500 mt-2">Tap to cancel</span>
+                </>
+              )}
             </button>
           </div>
         ) : (
@@ -138,15 +166,22 @@ export default function SOSButton({ onAlertSent }) {
             <div className="space-y-2">
               <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
                 <Phone className="w-4 h-4" />
-                <span>Calling 112...</span>
+                <span>Emergency contacts notified</span>
               </div>
-              <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-                <MapPin className="w-4 h-4" />
-                <span>Location shared</span>
-              </div>
+              {location ? (
+                <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                  <MapPin className="w-4 h-4" />
+                  <span>📍 {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}</span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                  <MapPin className="w-4 h-4" />
+                  <span>Location unavailable</span>
+                </div>
+              )}
               <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
                 <MessageSquare className="w-4 h-4" />
-                <span>SMS sent to 3 contacts</span>
+                <span>Email sent to pritesh.v.bachhav.cg@gmail.com</span>
               </div>
             </div>
           </div>

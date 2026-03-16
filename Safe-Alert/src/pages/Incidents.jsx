@@ -1,60 +1,10 @@
-import { useState } from 'react';
-import { Search, Filter, ChevronDown, MapPin, AlertTriangle, Shield, Car, Heart, Home } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Filter, ChevronDown, MapPin, AlertTriangle, Shield, Car, Heart, Home, Loader2 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import Navbar from '../components/Navbar';
 import BottomNav from '../components/BottomNav';
 import IncidentCard from '../components/IncidentCard';
-
-const mockIncidents = [
-  {
-    id: 1,
-    type: 'harassment',
-    description: 'Man followed me from the metro station to my apartment building. Kept asking for my number.',
-    location: 'Sector 21, Metro Station',
-    date: new Date(Date.now() - 1 * 60 * 60 * 1000),
-    severity: 'high'
-  },
-  {
-    id: 2,
-    type: 'suspicious',
-    description: 'White van circling the block multiple times. License plate partially visible.',
-    location: 'MG Road',
-    date: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    severity: 'medium'
-  },
-  {
-    id: 3,
-    type: 'harassment',
-    description: 'Inappropriate comments made by stranger while walking in the park.',
-    location: 'City Park',
-    date: new Date(Date.now() - 5 * 60 * 60 * 1000),
-    severity: 'low'
-  },
-  {
-    id: 4,
-    type: 'theft',
-    description: 'Snatch theft near the market area. Perpetrant fled on a motorcycle.',
-    location: 'Central Market',
-    date: new Date(Date.now() - 8 * 60 * 60 * 1000),
-    severity: 'medium'
-  },
-  {
-    id: 5,
-    type: 'accident',
-    description: 'Hit and run near the traffic signal. Driver was overspeeding.',
-    location: 'Junction 5',
-    date: new Date(Date.now() - 12 * 60 * 60 * 1000),
-    severity: 'medium'
-  },
-  {
-    id: 6,
-    type: 'suspicious',
-    description: 'Person lurking around the parking lot for several hours.',
-    description: 'Parking lot, Building Complex',
-    date: new Date(Date.now() - 24 * 60 * 60 * 1000),
-    severity: 'low'
-  },
-];
+import api from '../services/api';
 
 const filters = [
   { value: 'all', label: 'All Incidents' },
@@ -66,17 +16,52 @@ const filters = [
 
 export default function Incidents() {
   const { darkMode } = useTheme();
+  const [incidents, setIncidents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const [severityFilter, setSeverityFilter] = useState('all');
 
-  const filteredIncidents = mockIncidents.filter(incident => {
-    const matchesSearch = incident.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      incident.location.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = activeFilter === 'all' || incident.type === activeFilter;
-    const matchesSeverity = severityFilter === 'all' || incident.severity === severityFilter;
-    return matchesSearch && matchesType && matchesSeverity;
+  useEffect(() => {
+    fetchIncidents();
+  }, []);
+
+  const fetchIncidents = async () => {
+    try {
+      setLoading(true);
+      const data = await api.incidents.getAll();
+      setIncidents(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getLocationAddress = (location) => {
+    if (!location) return 'Unknown location';
+    if (typeof location === 'string') return location;
+    return location.address || 'Unknown location';
+  };
+
+  const transformIncident = (incident) => ({
+    ...incident,
+    location: getLocationAddress(incident.location),
+    date: new Date(incident.createdAt || Date.now()),
+    type: incident.incidentType,
   });
+
+  const filteredIncidents = incidents
+    .map(transformIncident)
+    .filter(incident => {
+      const location = getLocationAddress(incident.location);
+      const matchesSearch = incident.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        location.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesType = activeFilter === 'all' || incident.type === activeFilter;
+      const matchesSeverity = severityFilter === 'all' || incident.severity === severityFilter;
+      return matchesSearch && matchesType && matchesSeverity;
+    });
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
@@ -142,7 +127,18 @@ export default function Incidents() {
           </div>
 
           <div className="space-y-4">
-            {filteredIncidents.length === 0 ? (
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+              </div>
+            ) : error ? (
+              <div className="text-center py-12">
+                <p className="text-red-500">{error}</p>
+                <button onClick={fetchIncidents} className="mt-4 text-primary hover:underline">
+                  Try again
+                </button>
+              </div>
+            ) : filteredIncidents.length === 0 ? (
               <div className="bg-white dark:bg-dark-card rounded-2xl p-8 text-center">
                 <div className="w-16 h-16 mx-auto rounded-full bg-gray-100 dark:bg-dark-card flex items-center justify-center mb-4">
                   <Shield className="w-8 h-8 text-gray-400" />
