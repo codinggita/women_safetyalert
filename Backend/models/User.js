@@ -1,0 +1,62 @@
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
+
+/**
+ * User Model
+ * Represents a registered user in the SafeAlert application
+ */
+const userSchema = new mongoose.Schema(
+  {
+    // User's full name
+    name: {
+      type: String,
+      required: [true, 'Please provide a name'],
+      trim: true,
+      maxlength: [50, 'Name cannot exceed 50 characters'],
+    },
+
+    // User's email address (unique)
+    email: {
+      type: String,
+      required: [true, 'Please provide an email'],
+      unique: true,
+      lowercase: true,
+      trim: true,
+      match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please provide a valid email'],
+    },
+
+    // User's password (hashed)
+    password: {
+      type: String,
+      required: [true, 'Please provide a password'],
+      minlength: [6, 'Password must be at least 6 characters'],
+      select: false, // Don't return password by default in queries
+    },
+  },
+  {
+    timestamps: true, // Adds createdAt and updatedAt fields automatically
+  }
+);
+
+/**
+ * Hash password before saving to database
+ * Uses bcryptjs with 10 rounds of salt
+ */
+userSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) {
+    next();
+  }
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+});
+
+/**
+ * Compare provided password with stored hashed password
+ * @param {string} enteredPassword - The password to compare
+ * @returns {boolean} - True if passwords match
+ */
+userSchema.methods.matchPassword = async function (enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password);
+};
+
+module.exports = mongoose.model('User', userSchema);
