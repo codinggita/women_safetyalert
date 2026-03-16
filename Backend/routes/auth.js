@@ -93,7 +93,12 @@ router.post('/login', async (req, res) => {
  * @desc    Google OAuth - Redirect to Google
  * @access  Public
  */
-router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+router.get('/google', (req, res) => {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    return res.status(503).json({ message: 'Google OAuth is not configured' });
+  }
+  passport.authenticate('google', { scope: ['profile', 'email'] })(req, res);
+});
 
 /**
  * @route   GET /api/auth/google/callback
@@ -102,7 +107,12 @@ router.get('/google', passport.authenticate('google', { scope: ['profile', 'emai
  */
 router.get(
   '/google/callback',
-  passport.authenticate('google', { failureRedirect: '/login?error=oauth_failed' }),
+  (req, res, next) => {
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+      return res.status(503).json({ message: 'Google OAuth is not configured' });
+    }
+    passport.authenticate('google', { failureRedirect: '/login?error=oauth_failed' })(req, res, next);
+  },
   (req, res) => {
     const token = generateToken(req.user._id);
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
