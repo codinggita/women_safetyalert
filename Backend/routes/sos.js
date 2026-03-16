@@ -13,13 +13,20 @@ router.post('/', async (req, res) => {
   try {
     const { latitude, longitude, message } = req.body;
 
+    console.log('📧 req.user:', req.user);
+    console.log('📧 req.user.id:', req.user?.id);
+    console.log('📧 req.user._id:', req.user?._id);
+    console.log('📧 req.user.name:', req.user?.name);
+    console.log('📧 req.user.email:', req.user?.email);
+
     // Get all emergency contacts for the user
-    const contacts = await EmergencyContact.find({ userId: req.user.id });
+    const userId = req.user._id || req.user.id;
+    const contacts = await EmergencyContact.find({ userId });
     const contactIds = contacts.map(c => c._id);
 
     // Create SOS alert
     const sosAlert = await SOSAlert.create({
-      userId: req.user.id,
+      userId,
       location: { latitude, longitude },
       contactsNotified: contactIds,
       message,
@@ -27,13 +34,17 @@ router.post('/', async (req, res) => {
     });
 
     // Send SOS email
-    const user = req.user;
+    const user = {
+      name: req.user.name,
+      email: req.user.email
+    };
     const location = latitude && longitude ? { latitude, longitude } : null;
     const emailResult = await sendSOSEmail(user, location);
     console.log('📧 SOS Email Result:', emailResult);
 
-    res.status(201).json({ success: true, sosAlert });
+    res.status(201).json({ success: true, sosAlert, emailResult });
   } catch (error) {
+    console.error('❌ SOS Error:', error);
     res.status(500).json({ message: error.message });
   }
 });
