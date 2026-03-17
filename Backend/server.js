@@ -15,10 +15,10 @@ connectDB();
 
 // Middleware
 app.use(cors({
-  origin: true, // Allow all origins
+  origin: '*', // Allow all origins
   credentials: true,
 }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use(passport.initialize());
 
 // Routes
