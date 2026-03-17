@@ -1,48 +1,27 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-let transporter = null;
+let resend = null;
 
-const initTransporter = () => {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.log('⚠️ Email not configured - EMAIL_USER or EMAIL_PASS missing');
+const initResend = () => {
+  if (!process.env.RESEND_API_KEY) {
+    console.log('⚠️ Resend not configured - RESEND_API_KEY missing');
     return null;
   }
   
-  const cleanPassword = process.env.EMAIL_PASS.replace(/\s/g, '');
-  
-  if (process.env.REFRESH_TOKEN) {
-    return nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        type: 'OAuth2',
-        user: process.env.EMAIL_USER,
-        clientId: process.env.GOOGLE_CLIENT_ID,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        refreshToken: process.env.REFRESH_TOKEN,
-      },
-    });
-  }
-  
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: cleanPassword,
-    },
-  });
+  return new Resend(process.env.RESEND_API_KEY);
 };
 
 const sendSOSEmail = async (user, location) => {
-  console.log('📧 Attempting to send SOS email...');
-  console.log('📧 From:', process.env.EMAIL_USER);
+  console.log('📧 Attempting to send SOS email via Resend...');
+  console.log('📧 From: SafeAlert <onboarding@resend.dev>');
   console.log('📧 To:', process.env.SOS_EMAILS);
   
-  if (!transporter) {
-    transporter = initTransporter();
+  if (!resend) {
+    resend = initResend();
   }
   
-  if (!transporter) {
-    console.log('❌ Email service not available - transporter not initialized');
+  if (!resend) {
+    console.log('❌ Email service not available - Resend not initialized');
     return { success: false, reason: 'Email not configured on server' };
   }
 
@@ -74,18 +53,17 @@ const sendSOSEmail = async (user, location) => {
     </div>
   `;
 
-  const mailOptions = {
-    from: `${user.name} <${process.env.EMAIL_USER}>`,
-    replyTo: user.email,
-    to: sosEmails,
-    subject: subject,
-    html: htmlContent,
-  };
-
   try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log('✅ SOS email sent successfully! Message ID:', info.messageId);
-    return { success: true, messageId: info.messageId };
+    const data = await resend.emails.send({
+      from: 'SafeAlert <onboarding@resend.dev>',
+      to: sosEmails,
+      subject: subject,
+      html: htmlContent,
+      reply_to: user.email,
+    });
+    
+    console.log('✅ SOS email sent successfully! ID:', data.data?.id);
+    return { success: true, id: data.data?.id };
   } catch (error) {
     console.error('❌ Error sending SOS email:', error.message);
     return { success: false, reason: error.message };
