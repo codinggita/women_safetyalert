@@ -16,27 +16,41 @@ const getHeaders = () => {
 export const api = {
   auth: {
     register: async (userData) => {
-      const res = await fetch(`${API_URL}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Registration failed');
-      if (data.token) localStorage.setItem('token', data.token);
-      return data;
+      try {
+        const res = await fetch(`${API_URL}/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(userData),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Registration failed');
+        if (data.token) localStorage.setItem('token', data.token);
+        return data;
+      } catch (error) {
+        if (error.message === 'Failed to fetch') {
+          throw new Error('Cannot connect to server. Make sure the backend is running on port 5002.');
+        }
+        throw error;
+      }
     },
 
     login: async (credentials) => {
-      const res = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Login failed');
-      if (data.token) localStorage.setItem('token', data.token);
-      return data;
+      try {
+        const res = await fetch(`${API_URL}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(credentials),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Login failed');
+        if (data.token) localStorage.setItem('token', data.token);
+        return data;
+      } catch (error) {
+        if (error.message === 'Failed to fetch') {
+          throw new Error('Cannot connect to server. Make sure the backend is running on port 5002.');
+        }
+        throw error;
+      }
     },
 
     me: async () => {
@@ -140,10 +154,13 @@ export const api = {
 
   safeZones: {
     getAll: async () => {
-      const res = await fetch(`${API_URL}/safezones`, { headers: getHeaders() });
+      const headers = getHeaders();
+      console.log('Getting zones with headers:', headers);
+      const res = await fetch(`${API_URL}/safezones`, { headers });
       const data = await res.json();
+      console.log('Response:', res.status, data);
       if (!res.ok) throw new Error(data.message || 'Failed to fetch safe zones');
-      return data.safezones;
+      return data.safeZones;
     },
 
     create: async (zoneData) => {
@@ -154,7 +171,7 @@ export const api = {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to create safe zone');
-      return data.safezone;
+      return data.safeZone || data.safezone;
     },
 
     update: async (id, zoneData) => {
@@ -165,7 +182,7 @@ export const api = {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to update safe zone');
-      return data.safezone;
+      return data.safeZone || data.safezone;
     },
 
     delete: async (id) => {

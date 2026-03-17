@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Plus, Home, Building, GraduationCap, MapPin, Edit2, Trash2, Shield, Loader2 } from 'lucide-react';
-import { useTheme } from '../context/ThemeContext';
+import { Plus, Home, Building, GraduationCap, Edit2, Trash2, Shield, Loader2 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import BottomNav from '../components/BottomNav';
-import MapComponent from '../components/MapComponent';
 import Modal from '../components/Modal';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const zoneIcons = {
   home: Home,
@@ -20,13 +19,11 @@ const zoneColors = {
 };
 
 export default function SafeZones() {
-  const { darkMode } = useTheme();
+  const { user, loading: authLoading } = useAuth();
   const [zones, setZones] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingZone, setEditingZone] = useState(null);
-  const [selectedZone, setSelectedZone] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     address: '',
@@ -34,20 +31,24 @@ export default function SafeZones() {
   });
 
   useEffect(() => {
-    fetchZones();
-  }, []);
+    console.log('SafeZones useEffect:', { authLoading, user });
+    if (!authLoading && user) {
+      fetchZones();
+    } else if (!authLoading && !user) {
+      setLoading(false);
+    }
+  }, [authLoading, user]);
 
   const fetchZones = async () => {
     try {
       setLoading(true);
+      console.log('Fetching safe zones...');
       const data = await api.safeZones.getAll();
-      setZones(data.map((zone, index) => ({
-        ...zone,
-        x: 20 + (index * 25),
-        y: 20 + (index * 20),
-      })));
+      console.log('Got zones:', data);
+      setZones(data || []);
     } catch (err) {
-      setError(err.message);
+      console.error('Error fetching zones:', err);
+      setZones([]);
     } finally {
       setLoading(false);
     }
@@ -62,9 +63,9 @@ export default function SafeZones() {
   const handleEditZone = (zone) => {
     setEditingZone(zone);
     setFormData({
-      name: zone.name,
-      address: zone.address,
-      type: zone.type,
+      name: zone?.name || '',
+      address: zone?.address || '',
+      type: zone?.type || 'home',
     });
     setIsModalOpen(true);
   };
@@ -72,9 +73,9 @@ export default function SafeZones() {
   const handleDeleteZone = async (id) => {
     try {
       await api.safeZones.delete(id);
-      setZones(zones.filter(z => z._id !== id));
+      setZones(prev => prev.filter(z => z._id !== id));
     } catch (err) {
-      setError(err.message);
+      alert('Error: ' + err.message);
     }
   };
 
@@ -82,27 +83,23 @@ export default function SafeZones() {
     e.preventDefault();
     try {
       if (editingZone) {
-        const updated = await api.safeZones.update(editingZone._id, {
+        const result = await api.safeZones.update(editingZone._id, {
           name: formData.name,
           address: formData.address,
           type: formData.type,
         });
-        setZones(zones.map(z => z._id === editingZone._id ? { ...updated, x: z.x, y: z.y } : z));
+        setZones(prev => prev.map(z => z._id === editingZone._id ? result : z));
       } else {
-        const newZone = await api.safeZones.create({
+        const result = await api.safeZones.create({
           name: formData.name,
           address: formData.address,
           type: formData.type,
-          location: {
-            latitude: 28.6139 + (Math.random() - 0.5) * 0.1,
-            longitude: 77.209 + (Math.random() - 0.5) * 0.1,
-          },
         });
-        setZones([...zones, { ...newZone, x: Math.random() * 80 + 10, y: Math.random() * 80 + 10 }]);
+        setZones(prev => [...prev, result]);
       }
       setIsModalOpen(false);
     } catch (err) {
-      setError(err.message);
+      alert('Error: ' + err.message);
     }
   };
 
@@ -111,136 +108,99 @@ export default function SafeZones() {
       <Navbar />
       
       <main className="pt-20 pb-24 md:pt-24 md:pb-8 px-4">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-2xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Safe Zones
+                Safe Places
               </h1>
               <p className="text-gray-500 dark:text-gray-400">
-                Mark your safe places
+                Add your trusted locations
               </p>
             </div>
             <button
               onClick={handleAddZone}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl gradient-primary text-white font-medium hover:shadow-lg hover:shadow-primary/30 transition-all"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl gradient-primary text-white font-medium hover:shadow-lg hover:shadow-primary/30 transition-all hover:-translate-y-1 btn-hover"
             >
               <Plus className="w-5 h-5" />
-              Add Zone
+              Add Place
             </button>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm border border-gray-100 dark:border-dark-border overflow-hidden">
-                <div className="p-4 border-b border-gray-100 dark:border-dark-border">
-                  <h3 className="font-semibold text-gray-900 dark:text-white">
-                    Map View
-                  </h3>
-                </div>
-                <div className="h-96">
-                  {loading ? (
-                    <div className="flex items-center justify-center h-full">
-                      <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                    </div>
-                  ) : (
-                    <MapComponent
-                      showCurrentLocation={false}
-                      markers={zones.map(zone => ({
-                        id: zone._id,
-                        x: zone.x,
-                        y: zone.y,
-                        type: 'safe'
-                      }))}
-                      onMarkerClick={(marker) => {
-                        const zone = zones.find(z => z._id === marker.id);
-                        if (zone) setSelectedZone(zone);
-                      }}
-                    />
-                  )}
-                </div>
+          {authLoading || loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            </div>
+          ) : !user ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500">Please log in to view your safe places</p>
+            </div>
+          ) : !zones || zones.length === 0 ? (
+            <div className="bg-white dark:bg-dark-card rounded-2xl p-8 text-center">
+              <div className="w-16 h-16 mx-auto rounded-full bg-gray-100 dark:bg-dark-card flex items-center justify-center mb-4">
+                <Shield className="w-8 h-8 text-gray-400" />
               </div>
-            </div>
-
-            <div className="space-y-4">
-              <h3 className="font-semibold text-gray-900 dark:text-white">
-                Your Safe Zones
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                No safe places yet
               </h3>
-              
-              {loading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                </div>
-              ) : zones.length === 0 ? (
-                <div className="bg-white dark:bg-dark-card rounded-2xl p-6 text-center">
-                  <div className="w-14 h-14 mx-auto rounded-full bg-gray-100 dark:bg-dark-card flex items-center justify-center mb-3">
-                    <Shield className="w-7 h-7 text-gray-400" />
-                  </div>
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-1">
-                    No safe zones yet
-                  </h4>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-                    Add your trusted locations
-                  </p>
-                  <button
-                    onClick={handleAddZone}
-                    className="text-primary font-medium text-sm"
+              <p className="text-gray-500 dark:text-gray-400 mb-4">
+                Add your trusted locations
+              </p>
+              <button
+                onClick={handleAddZone}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl gradient-primary text-white font-medium"
+              >
+                <Plus className="w-5 h-5" />
+                Add Safe Place
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {(zones || []).map((zone, index) => {
+                const zoneType = zone?.type || 'home';
+                const Icon = zoneIcons[zoneType] || Home;
+                return (
+                  <div
+                    key={zone?._id}
+                    className={`bg-white dark:bg-dark-card rounded-xl p-5 shadow-sm border border-gray-100 dark:border-dark-border hover:shadow-lg hover:-translate-y-1 transition-all duration-300 card-animate stagger-${Math.min(index + 1, 5)}`}
                   >
-                    + Add Safe Zone
-                  </button>
-                </div>
-              ) : (
-                zones.map((zone) => {
-                  const Icon = zoneIcons[zone.type];
-                  return (
-                    <div
-                      key={zone._id}
-                      className={`bg-white dark:bg-dark-card rounded-xl p-4 shadow-sm border border-gray-100 dark:border-dark-border cursor-pointer transition-all hover:shadow-md ${
-                        selectedZone?._id === zone._id ? 'ring-2 ring-primary' : ''
-                      }`}
-                      onClick={() => setSelectedZone(zone)}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className={`w-10 h-10 rounded-lg ${zoneColors[zone.type]} flex items-center justify-center`}>
-                          <Icon className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-gray-900 dark:text-white">
-                            {zone.name}
-                          </h4>
-                          <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                            {zone.address}
-                          </p>
-                        </div>
+                    <div className="flex items-start gap-4">
+                      <div className={`w-14 h-14 rounded-xl ${zoneColors[zoneType] || zoneColors.home} flex items-center justify-center flex-shrink-0`}>
+                        <Icon className="w-7 h-7" />
                       </div>
-                      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-dark-border">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-lg text-gray-900 dark:text-white">
+                          {zone?.name}
+                        </h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                          {zone?.address}
+                        </p>
+                        <span className="inline-block mt-2 px-2 py-1 text-xs font-medium bg-gray-100 dark:bg-dark-border text-gray-600 dark:text-gray-400 rounded-lg capitalize">
+                          {zoneType}
+                        </span>
+                      </div>
+                      <div className="flex gap-1 flex-shrink-0">
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditZone(zone);
-                          }}
-                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-border rounded-lg transition-colors"
+                          onClick={() => handleEditZone(zone)}
+                          className="p-2 text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                          title="Edit"
                         >
-                          <Edit2 className="w-3 h-3" />
-                          Edit
+                          <Edit2 className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteZone(zone._id);
-                          }}
-                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          onClick={() => handleDeleteZone(zone._id)}
+                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          title="Delete"
                         >
-                          <Trash2 className="w-3 h-3" />
-                          Delete
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
-                  );
-                })
-              )}
+                  </div>
+                );
+              })}
             </div>
-          </div>
+          )}
         </div>
       </main>
 
@@ -249,12 +209,12 @@ export default function SafeZones() {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingZone ? 'Edit Safe Zone' : 'Add Safe Zone'}
+        title={editingZone ? 'Edit Safe Place' : 'Add Safe Place'}
       >
         <form onSubmit={handleSaveZone} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Zone Type
+              Place Type
             </label>
             <div className="grid grid-cols-3 gap-3">
               {[
@@ -302,17 +262,14 @@ export default function SafeZones() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Address
             </label>
-            <div className="relative">
-              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-                placeholder="Enter address"
-                required
-              />
-            </div>
+            <textarea
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all resize-none"
+              placeholder="Enter address"
+              rows="2"
+              required
+            />
           </div>
 
           <div className="flex gap-3 pt-4">
@@ -327,7 +284,7 @@ export default function SafeZones() {
               type="submit"
               className="flex-1 px-4 py-3 rounded-xl gradient-primary text-white font-medium hover:shadow-lg hover:shadow-primary/30 transition-all"
             >
-              {editingZone ? 'Save Changes' : 'Add Zone'}
+              {editingZone ? 'Save Changes' : 'Add Place'}
             </button>
           </div>
         </form>

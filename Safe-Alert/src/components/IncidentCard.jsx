@@ -34,7 +34,7 @@ export default function IncidentCard({ incident }) {
   };
 
   return (
-    <div className="bg-white dark:bg-dark-card rounded-xl p-4 shadow-sm border border-gray-100 dark:border-dark-border hover:shadow-md transition-all hover:-translate-y-1">
+    <div className="bg-white dark:bg-dark-card rounded-xl p-4 shadow-sm border border-gray-100 dark:border-dark-border hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
       <div className="flex items-start gap-3">
         <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${colorClass}`}>
           <Icon className="w-5 h-5" />

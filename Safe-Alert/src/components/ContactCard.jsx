@@ -2,7 +2,7 @@ import { Phone, Edit2, Trash2, Star } from 'lucide-react';
 
 export default function ContactCard({ contact, onEdit, onDelete, onSetPrimary }) {
   return (
-    <div className="bg-white dark:bg-dark-card rounded-xl p-4 shadow-sm border border-gray-100 dark:border-dark-border hover:shadow-md transition-shadow">
+    <div className="bg-white dark:bg-dark-card rounded-xl p-4 shadow-sm border border-gray-100 dark:border-dark-border hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-full gradient-secondary flex items-center justify-center text-white font-semibold">

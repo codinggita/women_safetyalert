@@ -75,7 +75,8 @@ const sendSOSEmail = async (user, location) => {
   `;
 
   const mailOptions = {
-    from: process.env.EMAIL_USER,
+    from: `${user.name} <${process.env.EMAIL_USER}>`,
+    replyTo: user.email,
     to: sosEmails,
     subject: subject,
     html: htmlContent,

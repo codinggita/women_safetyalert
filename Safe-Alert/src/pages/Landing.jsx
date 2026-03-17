@@ -154,7 +154,7 @@ export default function Landing() {
                 return (
                   <div
                     key={index}
-                    className="bg-white dark:bg-dark-card rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-dark-border hover:shadow-lg hover:-translate-y-1 transition-all"
+                    className={`bg-white dark:bg-dark-card rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-dark-border hover:shadow-lg hover:-translate-y-1 transition-all duration-300 card-animate stagger-${index + 1}`}
                   >
                     <div className={`w-12 h-12 rounded-xl ${feature.color} flex items-center justify-center mb-4`}>
                       <Icon className="w-6 h-6" />

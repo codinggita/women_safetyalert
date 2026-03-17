@@ -60,7 +60,26 @@ export default function MapComponent({
   const { location, loading: locationLoading, error: locationError, requestLocation, permissionGranted } = useLocation();
   const [mapReady, setMapReady] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [mapError, setMapError] = useState(null);
 
+  useEffect(() => {
+    try {
+      setMapReady(true);
+    } catch (err) {
+      setMapError(err.message);
+      console.error('Map error:', err);
+    }
+  }, []);
+
+  if (mapError) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-dark-border rounded-xl">
+        <p className="text-gray-500">Unable to load map</p>
+      </div>
+    );
+  }
+
+  try {
   const userLocation = location ? { latitude: location.latitude, longitude: location.longitude } : null;
 
   const defaultCenter = userLocation 
@@ -192,5 +211,12 @@ export default function MapComponent({
         </div>
       )}
     </div>
-  );
+    );
+  } catch (err) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-dark-border rounded-xl">
+        <p className="text-gray-500">Unable to load map</p>
+      </div>
+    );
+  }
 }

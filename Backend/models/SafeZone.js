@@ -26,18 +26,16 @@ const safeZoneSchema = new mongoose.Schema(
     type: {
       type: String,
       enum: ['home', 'office', 'college', 'other'],
-      default: 'other',
+      default: 'home',
     },
 
-    // Location coordinates of the safe zone
+    // Location coordinates of the safe zone (optional)
     location: {
       latitude: {
         type: Number,
-        required: [true, 'Latitude is required'],
       },
       longitude: {
         type: Number,
-        required: [true, 'Longitude is required'],
       },
     },
 

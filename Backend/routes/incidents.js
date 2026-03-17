@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const IncidentReport = require('../models/IncidentReport');
+const { protect } = require('../middleware/auth');
 
 /**
  * @route   GET /api/incidents
@@ -48,7 +49,7 @@ router.get('/', async (req, res) => {
  * @desc    Report an incident
  * @access  Private
  */
-router.post('/', async (req, res) => {
+router.post('/', protect, async (req, res) => {
   try {
     const { incidentType, description, latitude, longitude, address, date, severity, isAnonymous } = req.body;
 
@@ -98,7 +99,7 @@ router.get('/:id', async (req, res) => {
  * @desc    Get current user's reported incidents
  * @access  Private
  */
-router.get('/user/me', async (req, res) => {
+router.get('/user/me', protect, async (req, res) => {
   try {
     const incidents = await IncidentReport.find({ reportedBy: req.user.id })
       .sort({ createdAt: -1 });

@@ -11,6 +11,42 @@ import ReportIncident from './pages/ReportIncident';
 import Incidents from './pages/Incidents';
 import SafeZones from './pages/SafeZones';
 import Resources from './pages/Resources';
+import { Component } from 'react';
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('Error caught by boundary:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-dark-bg">
+          <div className="text-center p-8">
+            <p className="text-red-500 text-lg mb-2">Something went wrong</p>
+            <p className="text-gray-500 text-sm mb-4">{this.state.error?.message}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-primary text-white rounded-lg"
+            >
+              Reload page
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -62,7 +98,7 @@ function App() {
               <Route path="/contacts" element={<ProtectedRoute><Contacts /></ProtectedRoute>} />
               <Route path="/report" element={<ProtectedRoute><ReportIncident /></ProtectedRoute>} />
               <Route path="/incidents" element={<Incidents />} />
-              <Route path="/safe-zones" element={<ProtectedRoute><SafeZones /></ProtectedRoute>} />
+              <Route path="/safe-zones" element={<ErrorBoundary><ProtectedRoute><SafeZones /></ProtectedRoute></ErrorBoundary>} />
               <Route path="/resources" element={<Resources />} />
             </Routes>
           </Router>

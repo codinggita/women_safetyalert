@@ -25,10 +25,10 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       ></div>
-      <div className={`relative bg-white dark:bg-dark-card rounded-2xl w-full ${sizeClasses[size]} shadow-2xl animate-scale-in max-h-[90vh] overflow-hidden`}>
+      <div className={`relative bg-white dark:bg-dark-card rounded-2xl w-full ${sizeClasses[size]} shadow-2xl max-h-[90vh] overflow-hidden`}>
         <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-dark-border">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             {title}

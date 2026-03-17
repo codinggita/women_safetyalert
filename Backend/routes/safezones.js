@@ -1,13 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const SafeZone = require('../models/SafeZone');
+const { protect } = require('../middleware/auth');
 
 /**
  * @route   GET /api/safezones
  * @desc    Get all safe zones for current user
  * @access  Private
  */
-router.get('/', async (req, res) => {
+router.get('/', protect, async (req, res) => {
   try {
     const safeZones = await SafeZone.find({ userId: req.user.id }).sort({ createdAt: -1 });
     res.json({ success: true, safeZones });
@@ -21,17 +22,18 @@ router.get('/', async (req, res) => {
  * @desc    Create a new safe zone
  * @access  Private
  */
-router.post('/', async (req, res) => {
+router.post('/', protect, async (req, res) => {
   try {
-    const { name, type, latitude, longitude, address } = req.body;
+    const { name, type, address } = req.body;
 
-    const safeZone = await SafeZone.create({
+    const safeZoneData = {
       userId: req.user.id,
       name,
-      type: type || 'other',
-      location: { latitude, longitude },
+      type: type || 'home',
       address,
-    });
+    };
+
+    const safeZone = await SafeZone.create(safeZoneData);
 
     res.status(201).json({ success: true, safeZone });
   } catch (error) {
@@ -44,9 +46,9 @@ router.post('/', async (req, res) => {
  * @desc    Update a safe zone
  * @access  Private
  */
-router.put('/:id', async (req, res) => {
+router.put('/:id', protect, async (req, res) => {
   try {
-    const { name, type, latitude, longitude, address } = req.body;
+    const { name, type, address } = req.body;
 
     let safeZone = await SafeZone.findOne({ _id: req.params.id, userId: req.user.id });
 
@@ -56,7 +58,7 @@ router.put('/:id', async (req, res) => {
 
     safeZone = await SafeZone.findByIdAndUpdate(
       req.params.id,
-      { name, type, location: { latitude, longitude }, address },
+      { name, type, address },
       { new: true }
     );
 
@@ -71,7 +73,7 @@ router.put('/:id', async (req, res) => {
  * @desc    Delete a safe zone
  * @access  Private
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', protect, async (req, res) => {
   try {
     const safeZone = await SafeZone.findOne({ _id: req.params.id, userId: req.user.id });
 

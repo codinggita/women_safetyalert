@@ -139,7 +139,7 @@ export default function Dashboard() {
                       <button
                         key={index}
                         onClick={() => handleEmergencyCall(item.number)}
-                        className="flex flex-col items-center gap-2 p-4 rounded-xl bg-gray-50 dark:bg-dark-bg hover:bg-gray-100 dark:hover:bg-dark-border transition-all active:scale-95"
+                        className={`flex flex-col items-center gap-2 p-4 rounded-xl bg-gray-50 dark:bg-dark-bg hover:bg-gray-100 dark:hover:bg-dark-border transition-all active:scale-95 hover:-translate-y-1 hover:shadow-lg card-animate stagger-${index + 1}`}
                       >
                         <div className={`w-12 h-12 rounded-full ${item.color} flex items-center justify-center shadow-lg`}>
                           <Icon className="w-6 h-6 text-white" />
